@@ -350,6 +350,15 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
+// Customed - allow add customed coded and control laws
+#ifndef MODE_CUSTOMED_ENABLED
+ #define MODE_CUSTOMED_ENABLED ENABLED
+ #ifndef CUSTOMED_VARIABLES
+  #define CUSTOMED_VARIABLES
+ #endif
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////
 // Autorotate - autonomous auto-rotation - helicopters only
@@ -387,6 +396,26 @@
 // FLIGHT_MODE
 //
 
+#if MODE_CUSTOMED_ENABLED == ENABLED
+    #ifndef FLIGHT_MODE_1
+    # define FLIGHT_MODE_1                  Mode::Number::CUSTOMED
+    #endif
+    #ifndef FLIGHT_MODE_2
+    # define FLIGHT_MODE_2                  Mode::Number::CUSTOMED
+    #endif
+    #ifndef FLIGHT_MODE_3
+    # define FLIGHT_MODE_3                  Mode::Number::CUSTOMED
+    #endif
+    #ifndef FLIGHT_MODE_4
+    # define FLIGHT_MODE_4                  Mode::Number::CUSTOMED
+    #endif
+    #ifndef FLIGHT_MODE_5
+    # define FLIGHT_MODE_5                  Mode::Number::CUSTOMED
+    #endif
+    #ifndef FLIGHT_MODE_6
+    # define FLIGHT_MODE_6                  Mode::Number::CUSTOMED
+    #endif
+#else
 #ifndef FLIGHT_MODE_1
  # define FLIGHT_MODE_1                  Mode::Number::STABILIZE
 #endif
@@ -405,7 +434,7 @@
 #ifndef FLIGHT_MODE_6
  # define FLIGHT_MODE_6                  Mode::Number::STABILIZE
 #endif
-
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 // Throttle Failsafe

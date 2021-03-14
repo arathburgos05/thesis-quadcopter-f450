@@ -14,4 +14,8 @@ int                 WiiDisplacementY=0;
 
 #endif  // USERHOOK_VARIABLES
 
+// variables
+#ifdef CUSTOMED_VARIABLES
+
+#endif  // USERHOOK_VARIABLES
 

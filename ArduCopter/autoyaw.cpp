@@ -3,9 +3,15 @@
 Mode::AutoYaw Mode::auto_yaw;
 
 // roi_yaw - returns heading towards location held in roi
-float Mode::AutoYaw::roi_yaw() const
+float Mode::AutoYaw::roi_yaw()
 {
-    return get_bearing_cd(copter.inertial_nav.get_position(), roi);
+    roi_yaw_counter++;
+    if (roi_yaw_counter >= 4) {
+        roi_yaw_counter = 0;
+        _roi_yaw = get_bearing_cd(copter.inertial_nav.get_position(), roi);
+    }
+
+    return _roi_yaw;
 }
 
 float Mode::AutoYaw::look_ahead_yaw()
@@ -67,6 +73,7 @@ void Mode::AutoYaw::set_mode(autopilot_yaw_mode yaw_mode)
 
     case AUTO_YAW_ROI:
         // look ahead until we know otherwise
+        _roi_yaw = copter.ahrs.yaw_sensor;
         break;
 
     case AUTO_YAW_FIXED:

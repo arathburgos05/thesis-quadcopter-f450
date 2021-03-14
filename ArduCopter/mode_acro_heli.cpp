@@ -49,16 +49,16 @@ void ModeAcro_Heli::run()
         attitude_control->reset_rate_controller_I_terms();
         break;
     case AP_Motors::SpoolState::GROUND_IDLE:
-        // If aircraft is landed, set target heading to current and reset the integrator
-        // Otherwise motors could be at ground idle for practice autorotation
-        if ((motors->init_targets_on_arming() && motors->using_leaky_integrator()) || (copter.ap.land_complete && !motors->using_leaky_integrator())) {
+        // Landed
+        if (motors->init_targets_on_arming()) {
             attitude_control->set_attitude_target_to_current_attitude();
-            attitude_control->reset_rate_controller_I_terms_smoothly();
+            attitude_control->reset_rate_controller_I_terms();
         }
         break;
     case AP_Motors::SpoolState::THROTTLE_UNLIMITED:
-        if (copter.ap.land_complete && !motors->using_leaky_integrator()) {
-            attitude_control->reset_rate_controller_I_terms_smoothly();
+        // clear landing flag above zero throttle
+        if (!motors->limit.throttle_lower) {
+            set_land_complete(false);
         }
         break;
     case AP_Motors::SpoolState::SPOOLING_UP:

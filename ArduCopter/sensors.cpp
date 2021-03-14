@@ -90,15 +90,12 @@ void Copter::read_rangefinder(void)
             rf_state.last_healthy_ms = now;
         }
 
-        // send downward facing lidar altitude and health to the libraries that require it
+        // send downward facing lidar altitude and health to waypoint and circle navigation libraries
         if (rf_orient == ROTATION_PITCH_270) {
             if (rangefinder_state.alt_healthy || timed_out) {
                 wp_nav->set_rangefinder_alt(rangefinder_state.enabled, rangefinder_state.alt_healthy, rangefinder_state.alt_cm_filt.get());
 #if MODE_CIRCLE_ENABLED
                 circle_nav->set_rangefinder_alt(rangefinder_state.enabled && wp_nav->rangefinder_used(), rangefinder_state.alt_healthy, rangefinder_state.alt_cm_filt.get());
-#endif
-#if PROXIMITY_ENABLED == ENABLED
-                g2.proximity.set_rangefinder_alt(rangefinder_state.enabled, rangefinder_state.alt_healthy, rangefinder_state.alt_cm_filt.get());
 #endif
             }
         }
@@ -118,13 +115,13 @@ void Copter::read_rangefinder(void)
 }
 
 // return true if rangefinder_alt can be used
-bool Copter::rangefinder_alt_ok() const
+bool Copter::rangefinder_alt_ok()
 {
     return (rangefinder_state.enabled && rangefinder_state.alt_healthy);
 }
 
 // return true if rangefinder_alt can be used
-bool Copter::rangefinder_up_ok() const
+bool Copter::rangefinder_up_ok()
 {
     return (rangefinder_up_state.enabled && rangefinder_up_state.alt_healthy);
 }

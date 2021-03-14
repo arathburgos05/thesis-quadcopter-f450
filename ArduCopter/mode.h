@@ -21,7 +21,7 @@ public:
         RTL =           6,  // automatic return to launching point
         CIRCLE =        7,  // automatic circular flight with automatic throttle
         LAND =          9,  // automatic landing with horizontal position control
-        DRIFT =        11,  // semi-autonomous position, yaw and throttle control
+        DRIFT =        11,  // semi-automous position, yaw and throttle control
         SPORT =        13,  // manual earth-frame angular rate control with manual throttle
         FLIP =         14,  // automatically flip the vehicle on the roll axis
         AUTOTUNE =     15,  // automatically tune the vehicle's roll and pitch gains
@@ -36,6 +36,8 @@ public:
         ZIGZAG    =    24,  // ZIGZAG mode is able to fly in a zigzag manner with predefined point A and point B
         SYSTEMID  =    25,  // System ID mode produces automated system identification signals in the controllers
         AUTOROTATE =   26,  // Autonomous autorotation
+        ROLQUAD =      27,  // RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+
     };
 
     // constructor
@@ -210,13 +212,16 @@ public:
     private:
 
         float look_ahead_yaw();
-        float roi_yaw() const;
+        float roi_yaw();
 
         // auto flight mode's yaw mode
         uint8_t _mode = AUTO_YAW_LOOK_AT_NEXT_WP;
 
         // Yaw will point at this location if mode is set to AUTO_YAW_ROI
         Vector3f roi;
+
+        // bearing from current location to the ROI
+        float _roi_yaw;
 
         // yaw used for YAW_FIXED yaw_mode
         int32_t _fixed_yaw;
@@ -229,6 +234,10 @@ public:
 
         // turn rate (in cds) when auto_yaw_mode is set to AUTO_YAW_RATE
         float _rate_cds;
+
+        // used to reduce update rate to 100hz:
+        uint8_t roi_yaw_counter;
+
     };
     static AutoYaw auto_yaw;
 
@@ -401,10 +410,7 @@ private:
     enum class Options : int32_t {
         AllowArming                        = (1 << 0U),
         AllowTakeOffWithoutRaisingThrottle = (1 << 1U),
-        IgnorePilotYaw                     = (1 << 2U),
     };
-
-    bool use_pilot_yaw(void) const;
 
     bool start_command(const AP_Mission::Mission_Command& cmd);
     bool verify_command(const AP_Mission::Mission_Command& cmd);
@@ -467,7 +473,7 @@ private:
     bool verify_payload_place();
     bool verify_loiter_unlimited();
     bool verify_loiter_time(const AP_Mission::Mission_Command& cmd);
-    bool verify_loiter_to_alt() const;
+    bool verify_loiter_to_alt();
     bool verify_RTL();
     bool verify_wait_delay();
     bool verify_within_distance();
@@ -832,8 +838,6 @@ private:
     // enum for GUID_OPTIONS parameter
     enum class Options : int32_t {
         AllowArmingFromTX = (1U << 0),
-        // this bit is still available, pilot yaw was mapped to bit 2 for symmetry with auto
-        IgnorePilotYaw    = (1U << 2),
     };
 
     void pos_control_start();
@@ -845,11 +849,9 @@ private:
     void posvel_control_run();
     void set_desired_velocity_with_accel_and_fence_limits(const Vector3f& vel_des);
     void set_yaw_state(bool use_yaw, float yaw_cd, bool use_yaw_rate, float yaw_rate_cds, bool relative_angle);
-    bool use_pilot_yaw(void) const;
 
     // controls which controller is run (pos or vel):
     GuidedMode guided_mode = Guided_TakeOff;
-    bool send_notification;     // used to send one time notification to ground station
 
 };
 
@@ -1062,7 +1064,7 @@ public:
     RTLState state() { return _state; }
 
     // this should probably not be exposed
-    bool state_complete() const { return _state_complete; }
+    bool state_complete() { return _state_complete; }
 
     virtual bool is_landing() const override;
 
@@ -1125,15 +1127,6 @@ private:
     uint32_t _loiter_start_time;
 
     bool terrain_following_allowed;
-
-    // enum for RTL_OPTIONS parameter
-    enum class Options : int32_t {
-        // First pair of bits are still available, pilot yaw was mapped to bit 2 for symmetry with auto
-        IgnorePilotYaw    = (1U << 2),
-    };
-
-    bool use_pilot_yaw(void) const;
-
 };
 
 
@@ -1272,7 +1265,7 @@ protected:
 
 private:
 
-    void log_data() const;
+    void log_data();
     float waveform(float time);
 
     enum class AxisType {
@@ -1329,14 +1322,9 @@ public:
     bool is_autopilot() const override { return false; }
 
     // Throw types
-    enum class ThrowType {
-        Upward = 0,
-        Drop = 1
-    };
-
-    enum class PreThrowMotorState {
-        STOPPED = 0,
-        RUNNING = 1,
+    enum ThrowModeType {
+        ThrowType_Upward = 0,
+        ThrowType_Drop = 1
     };
 
 protected:
@@ -1588,3 +1576,26 @@ private:
 
 };
 #endif
+
+//Class Rol Quad //RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+class ModeRolQuad : public Mode {
+
+public:
+    // inherit constructor
+    using Mode::Mode;
+
+    virtual void run() override;
+
+    bool requires_GPS() const override { return false; }
+    bool has_manual_throttle() const override { return true; }
+    bool allows_arming(bool from_gcs) const override { return true; };
+    bool is_autopilot() const override { return false; }
+
+    protected:
+
+        const char *name() const override { return "ROLQUAD"; }
+        const char *name4() const override { return "ROQD"; }
+
+    private:
+
+    };

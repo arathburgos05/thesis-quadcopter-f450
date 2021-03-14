@@ -44,7 +44,6 @@ bool ModeGuided::init(bool ignore_checks)
 {
     // start in position control mode
     pos_control_start();
-    send_notification = false;
     return true;
 }
 
@@ -63,10 +62,6 @@ void ModeGuided::run()
     case Guided_WP:
         // run position controller
         pos_control_run();
-        if (send_notification && wp_nav->reached_wp_destination()) {
-            send_notification = false;
-            gcs().send_mission_item_reached_message(0);
-        }
         break;
 
     case Guided_Velocity:
@@ -262,9 +257,6 @@ bool ModeGuided::set_destination(const Vector3f& destination, bool use_yaw, floa
 
     // log target
     copter.Log_Write_GuidedTarget(guided_mode, destination, Vector3f());
-
-    send_notification = true;
-
     return true;
 }
 
@@ -308,9 +300,6 @@ bool ModeGuided::set_destination(const Location& dest_loc, bool use_yaw, float y
 
     // log target
     copter.Log_Write_GuidedTarget(guided_mode, Vector3f(dest_loc.lat, dest_loc.lng, dest_loc.alt),Vector3f());
-
-    send_notification = true;
-
     return true;
 }
 
@@ -421,7 +410,7 @@ void ModeGuided::pos_control_run()
 {
     // process pilot's yaw input
     float target_yaw_rate = 0;
-    if (!copter.failsafe.radio && use_pilot_yaw()) {
+    if (!copter.failsafe.radio) {
         // get pilot's desired yaw rate
         target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
         if (!is_zero(target_yaw_rate)) {
@@ -463,7 +452,7 @@ void ModeGuided::vel_control_run()
 {
     // process pilot's yaw input
     float target_yaw_rate = 0;
-    if (!copter.failsafe.radio && use_pilot_yaw()) {
+    if (!copter.failsafe.radio) {
         // get pilot's desired yaw rate
         target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
         if (!is_zero(target_yaw_rate)) {
@@ -527,7 +516,7 @@ void ModeGuided::posvel_control_run()
     // process pilot's yaw input
     float target_yaw_rate = 0;
 
-    if (!copter.failsafe.radio && use_pilot_yaw()) {
+    if (!copter.failsafe.radio) {
         // get pilot's desired yaw rate
         target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
         if (!is_zero(target_yaw_rate)) {
@@ -602,7 +591,7 @@ void ModeGuided::angle_control_run()
 
     // wrap yaw request
     float yaw_in = wrap_180_cd(guided_angle_state.yaw_cd);
-    float yaw_rate_in = guided_angle_state.yaw_rate_cds;
+    float yaw_rate_in = wrap_180_cd(guided_angle_state.yaw_rate_cds);
 
     float climb_rate_cms = 0.0f;
     if (!guided_angle_state.use_thrust) {
@@ -690,8 +679,10 @@ void ModeGuided::set_desired_velocity_with_accel_and_fence_limits(const Vector3f
     curr_vel_des.z += constrain_float(vel_delta.z, -vel_delta_z_max, vel_delta_z_max);
 
 #if AC_AVOID_ENABLED
-    // limit the velocity for obstacle/fence avoidance
-    copter.avoid.adjust_velocity(curr_vel_des, pos_control->get_pos_xy_p().kP(), pos_control->get_max_accel_xy(), pos_control->get_pos_z_p().kP(), pos_control->get_max_accel_z(), G_Dt);
+    // limit the velocity to prevent fence violations
+    copter.avoid.adjust_velocity(pos_control->get_pos_xy_p().kP(), pos_control->get_max_accel_xy(), curr_vel_des, G_Dt);
+    // get avoidance adjusted climb rate
+    curr_vel_des.z = get_avoidance_adjusted_climbrate(curr_vel_des.z);
 #endif
 
     // update position controller with new target
@@ -706,12 +697,6 @@ void ModeGuided::set_yaw_state(bool use_yaw, float yaw_cd, bool use_yaw_rate, fl
     } else if (use_yaw_rate) {
         auto_yaw.set_rate(yaw_rate_cds);
     }
-}
-
-// returns true if pilot's yaw input should be used to adjust vehicle's heading
-bool ModeGuided::use_pilot_yaw(void) const
-{
-    return (copter.g2.guided_options.get() & uint32_t(Options::IgnorePilotYaw)) == 0;
 }
 
 // Guided Limit code

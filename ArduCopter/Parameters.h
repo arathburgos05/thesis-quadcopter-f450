@@ -471,6 +471,7 @@ public:
     AP_Int8                 acro_trainer;
     AP_Float                acro_rp_expo;
 
+    AP_Float                a_roll;
     // Note: keep initializers here in the same order as they are declared
     // above.
     Parameters()

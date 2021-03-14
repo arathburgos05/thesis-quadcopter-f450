@@ -36,6 +36,7 @@ public:
         ZIGZAG    =    24,  // ZIGZAG mode is able to fly in a zigzag manner with predefined point A and point B
         SYSTEMID  =    25,  // System ID mode produces automated system identification signals in the controllers
         AUTOROTATE =   26,  // Autonomous autorotation
+		CUSTOMED =	   27,  // Custom flight mode
     };
 
     // constructor
@@ -1585,6 +1586,33 @@ private:
 
     //--- Internal functions ---
     void warning_message(uint8_t message_n);    //Handles output messages to the terminal
+
+};
+#endif
+
+#if MODE_CUSTOMED_ENABLED == ENABLED
+class ModeCustomed : public Mode {
+
+public:
+
+    // inherit constructor
+    using Mode::Mode;
+
+    void run() override;
+
+    bool is_autopilot() const override { return false; }
+    bool requires_GPS() const override { return false; }
+    bool has_manual_throttle() const override { return true; }
+    bool allows_arming(bool from_gcs) const override { return true; };
+
+    static const struct AP_Param::GroupInfo  var_info[];
+
+protected:
+
+    const char *name() const override { return "CUSTOMED"; }
+    const char *name4() const override { return "CUFM"; }
+
+private:
 
 };
 #endif

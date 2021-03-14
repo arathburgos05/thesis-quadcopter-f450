@@ -14,7 +14,10 @@
 
 MAV_TYPE GCS_Copter::frame_type() const
 {
-    return copter.get_frame_mav_type();
+    if (copter.motors == nullptr) {
+        return MAV_TYPE_GENERIC;
+    }
+    return copter.motors->get_frame_mav_type();
 }
 
 MAV_MODE GCS_MAVLINK_Copter::base_mode() const
@@ -93,6 +96,12 @@ void GCS_MAVLINK_Copter::send_position_target_global_int()
     if (!copter.flightmode->get_wp(target)) {
         return;
     }
+
+    // convert altitude frame to AMSL (this may use the terrain database)
+    if (!target.change_alt_frame(Location::AltFrame::ABSOLUTE)) {
+        return;
+    }
+
     mavlink_msg_position_target_global_int_send(
         chan,
         AP_HAL::millis(), // time_boot_ms
@@ -171,6 +180,17 @@ void GCS_MAVLINK_Copter::send_nav_controller_output() const
         copter.pos_control->get_alt_error() * 1.0e-2f,
         0,
         flightmode->crosstrack_error() * 1.0e-2f);
+}
+
+float GCS_MAVLINK_Copter::vfr_hud_airspeed() const
+{
+    Vector3f airspeed_vec_bf;
+    if (AP::ahrs().airspeed_vector_true(airspeed_vec_bf)) {
+        // we are running the EKF3 wind estimation code which can give
+        // us an airspeed estimate
+        return airspeed_vec_bf.length();
+    }
+    return AP::gps().ground_speed();
 }
 
 int16_t GCS_MAVLINK_Copter::vfr_hud_throttle() const
@@ -272,6 +292,10 @@ bool GCS_MAVLINK_Copter::try_send_message(enum ap_message id)
         break;
 
     case MSG_WIND:
+        CHECK_PAYLOAD_SIZE(WIND);
+        send_wind();
+        break;
+
     case MSG_SERVO_OUT:
     case MSG_AOA_SSA:
     case MSG_LANDING:
@@ -308,7 +332,7 @@ const AP_Param::GroupInfo GCS_MAVLINK_Parameters::var_info[] = {
     // @DisplayName: Raw sensor stream rate
     // @Description: Stream rate of RAW_IMU, SCALED_IMU2, SCALED_IMU3, SCALED_PRESSURE, SCALED_PRESSURE2, SCALED_PRESSURE3 and SENSOR_OFFSETS to ground station
     // @Units: Hz
-    // @Range: 0 10
+    // @Range: 0 50
     // @Increment: 1
     // @User: Advanced
     AP_GROUPINFO("RAW_SENS", 0, GCS_MAVLINK_Parameters, streamRates[0],  0),
@@ -317,7 +341,7 @@ const AP_Param::GroupInfo GCS_MAVLINK_Parameters::var_info[] = {
     // @DisplayName: Extended status stream rate to ground station
     // @Description: Stream rate of SYS_STATUS, POWER_STATUS, MEMINFO, CURRENT_WAYPOINT, GPS_RAW_INT, GPS_RTK (if available), GPS2_RAW (if available), GPS2_RTK (if available), NAV_CONTROLLER_OUTPUT, and FENCE_STATUS to ground station
     // @Units: Hz
-    // @Range: 0 10
+    // @Range: 0 50
     // @Increment: 1
     // @User: Advanced
     AP_GROUPINFO("EXT_STAT", 1, GCS_MAVLINK_Parameters, streamRates[1],  0),
@@ -326,7 +350,7 @@ const AP_Param::GroupInfo GCS_MAVLINK_Parameters::var_info[] = {
     // @DisplayName: RC Channel stream rate to ground station
     // @Description: Stream rate of SERVO_OUTPUT_RAW and RC_CHANNELS to ground station
     // @Units: Hz
-    // @Range: 0 10
+    // @Range: 0 50
     // @Increment: 1
     // @User: Advanced
     AP_GROUPINFO("RC_CHAN",  2, GCS_MAVLINK_Parameters, streamRates[2],  0),
@@ -335,7 +359,7 @@ const AP_Param::GroupInfo GCS_MAVLINK_Parameters::var_info[] = {
     // @DisplayName: Raw Control stream rate to ground station
     // @Description: Stream rate of RC_CHANNELS_SCALED (HIL only) to ground station
     // @Units: Hz
-    // @Range: 0 10
+    // @Range: 0 50
     // @Increment: 1
     // @User: Advanced
     AP_GROUPINFO("RAW_CTRL", 3, GCS_MAVLINK_Parameters, streamRates[3],  0),
@@ -344,7 +368,7 @@ const AP_Param::GroupInfo GCS_MAVLINK_Parameters::var_info[] = {
     // @DisplayName: Position stream rate to ground station
     // @Description: Stream rate of GLOBAL_POSITION_INT and LOCAL_POSITION_NED to ground station
     // @Units: Hz
-    // @Range: 0 10
+    // @Range: 0 50
     // @Increment: 1
     // @User: Advanced
     AP_GROUPINFO("POSITION", 4, GCS_MAVLINK_Parameters, streamRates[4],  0),
@@ -353,7 +377,7 @@ const AP_Param::GroupInfo GCS_MAVLINK_Parameters::var_info[] = {
     // @DisplayName: Extra data type 1 stream rate to ground station
     // @Description: Stream rate of ATTITUDE, SIMSTATE (SITL only), AHRS2 and PID_TUNING to ground station
     // @Units: Hz
-    // @Range: 0 10
+    // @Range: 0 50
     // @Increment: 1
     // @User: Advanced
     AP_GROUPINFO("EXTRA1",   5, GCS_MAVLINK_Parameters, streamRates[5],  0),
@@ -362,7 +386,7 @@ const AP_Param::GroupInfo GCS_MAVLINK_Parameters::var_info[] = {
     // @DisplayName: Extra data type 2 stream rate to ground station
     // @Description: Stream rate of VFR_HUD to ground station
     // @Units: Hz
-    // @Range: 0 10
+    // @Range: 0 50
     // @Increment: 1
     // @User: Advanced
     AP_GROUPINFO("EXTRA2",   6, GCS_MAVLINK_Parameters, streamRates[6],  0),
@@ -371,7 +395,7 @@ const AP_Param::GroupInfo GCS_MAVLINK_Parameters::var_info[] = {
     // @DisplayName: Extra data type 3 stream rate to ground station
     // @Description: Stream rate of AHRS, HWSTATUS, SYSTEM_TIME, RANGEFINDER, DISTANCE_SENSOR, TERRAIN_REQUEST, BATTERY2, MOUNT_STATUS, OPTICAL_FLOW, GIMBAL_REPORT, MAG_CAL_REPORT, MAG_CAL_PROGRESS, EKF_STATUS_REPORT, VIBRATION and RPM to ground station
     // @Units: Hz
-    // @Range: 0 10
+    // @Range: 0 50
     // @Increment: 1
     // @User: Advanced
     AP_GROUPINFO("EXTRA3",   7, GCS_MAVLINK_Parameters, streamRates[7],  0),
@@ -380,7 +404,7 @@ const AP_Param::GroupInfo GCS_MAVLINK_Parameters::var_info[] = {
     // @DisplayName: Parameter stream rate to ground station
     // @Description: Stream rate of PARAM_VALUE to ground station
     // @Units: Hz
-    // @Range: 0 10
+    // @Range: 0 50
     // @Increment: 1
     // @User: Advanced
     AP_GROUPINFO("PARAMS",   8, GCS_MAVLINK_Parameters, streamRates[8],  0),
@@ -440,6 +464,7 @@ static const ap_message STREAM_EXTRA3_msgs[] = {
     MSG_AHRS,
     MSG_HWSTATUS,
     MSG_SYSTEM_TIME,
+    MSG_WIND,
     MSG_RANGEFINDER,
     MSG_DISTANCE_SENSOR,
 #if AP_TERRAIN_AVAILABLE && AC_TERRAIN
@@ -529,7 +554,12 @@ bool GCS_MAVLINK_Copter::params_ready() const
 void GCS_MAVLINK_Copter::send_banner()
 {
     GCS_MAVLINK::send_banner();
-    send_text(MAV_SEVERITY_INFO, "Frame: %s", copter.get_frame_string());
+    if (copter.motors == nullptr) {
+        send_text(MAV_SEVERITY_INFO, "motors not allocated");
+        return;
+    }
+    send_text(MAV_SEVERITY_INFO, "Frame: %s/%s", copter.motors->get_frame_string(),
+                                                 copter.motors->get_type_string());
 }
 
 // a RC override message is considered to be a 'heartbeat' from the ground station for failsafe purposes
@@ -673,11 +703,6 @@ MAV_RESULT GCS_MAVLINK_Copter::handle_command_mount(const mavlink_command_long_t
     return GCS_MAVLINK::handle_command_mount(packet);
 }
 
-bool GCS_MAVLINK_Copter::allow_disarm() const
-{
-    return copter.ap.land_complete;
-}
-
 MAV_RESULT GCS_MAVLINK_Copter::handle_command_long_packet(const mavlink_command_long_t &packet)
 {
     switch(packet.command) {
@@ -751,7 +776,7 @@ MAV_RESULT GCS_MAVLINK_Copter::handle_command_long_packet(const mavlink_command_
         return MAV_RESULT_FAILED;
 
     case MAV_CMD_DO_CHANGE_SPEED:
-        // param1 : unused
+        // param1 : Speed type (0 or 1=Ground Speed, 2=Climb Speed, 3=Descent Speed)
         // param2 : new speed in m/s
         // param3 : unused
         // param4 : unused
@@ -1322,22 +1347,17 @@ void GCS_MAVLINK_Copter::handleMessage(const mavlink_message_t &msg)
 
 
 MAV_RESULT GCS_MAVLINK_Copter::handle_flight_termination(const mavlink_command_long_t &packet) {
-    MAV_RESULT result = MAV_RESULT_FAILED;
-
 #if ADVANCED_FAILSAFE == ENABLED
-    if (GCS_MAVLINK::handle_flight_termination(packet) != MAV_RESULT_ACCEPTED) {
-#endif
-        if (packet.param1 > 0.5f) {
-            copter.arming.disarm(AP_Arming::Method::TERMINATION);
-            result = MAV_RESULT_ACCEPTED;
-        }
-#if ADVANCED_FAILSAFE == ENABLED
-    } else {
-        result = MAV_RESULT_ACCEPTED;
+    if (GCS_MAVLINK::handle_flight_termination(packet) == MAV_RESULT_ACCEPTED) {
+        return MAV_RESULT_ACCEPTED;
     }
 #endif
+    if (packet.param1 > 0.5f) {
+        copter.arming.disarm(AP_Arming::Method::TERMINATION);
+        return MAV_RESULT_ACCEPTED;
+    }
 
-    return result;
+    return MAV_RESULT_FAILED;
 }
 
 float GCS_MAVLINK_Copter::vfr_hud_alt() const
@@ -1377,4 +1397,20 @@ MAV_LANDED_STATE GCS_MAVLINK_Copter::landed_state() const
         return MAV_LANDED_STATE_TAKEOFF;
     }
     return MAV_LANDED_STATE_IN_AIR;
+}
+
+void GCS_MAVLINK_Copter::send_wind() const
+{
+    Vector3f airspeed_vec_bf;
+    if (!AP::ahrs().airspeed_vector_true(airspeed_vec_bf)) {
+        // if we don't have an airspeed estimate then we don't have a
+        // valid wind estimate on copters
+        return;
+    }
+    const Vector3f wind = AP::ahrs().wind_estimate();
+    mavlink_msg_wind_send(
+        chan,
+        degrees(atan2f(-wind.y, -wind.x)),
+        wind.length(),
+        wind.z);
 }

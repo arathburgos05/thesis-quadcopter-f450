@@ -29,6 +29,7 @@
  *  Adam M Rivera       :Auto Compass Declination
  *  Amilcar Lucas       :Camera mount library
  *  Andrew Tridgell     :General development, Mavlink Support
+ *  Andy Piper          :Harmonic notch, In-flight FFT, Bi-directional DShot, various drivers
  *  Angel Fernandez     :Alpha testing
  *  AndreasAntonopoulous:GeoFence
  *  Arthur Benemann     :DroidPlanner GCS
@@ -181,9 +182,6 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
 #if WINCH_ENABLED == ENABLED
     SCHED_TASK_CLASS(AP_Winch,             &copter.g2.winch,            update,          50,  50),
 #endif
-#if GENERATOR_ENABLED
-    SCHED_TASK_CLASS(AP_Generator_RichenPower,     &copter.generator,      update,    10,     50),
-#endif
 #ifdef USERHOOK_FASTLOOP
     SCHED_TASK(userhook_FastLoop,    100,     75),
 #endif
@@ -205,9 +203,6 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
 #if STATS_ENABLED == ENABLED
     SCHED_TASK_CLASS(AP_Stats,             &copter.g2.stats,            update,           1, 100),
 #endif
-#if OSD_ENABLED == ENABLED
-    SCHED_TASK(publish_osd_info, 1, 10),
-#endif
 };
 
 void Copter::get_scheduler_tasks(const AP_Scheduler::Task *&tasks,
@@ -228,10 +223,10 @@ void Copter::fast_loop()
     ins.update();
 
     // run low level rate controllers that only require IMU data
-    //attitude_control->rate_controller_run();
+    attitude_control->rate_controller_run();
 
     // send outputs to the motors library immediately
-    //motors_output();
+    motors_output();
 
     // run EKF state estimator (expensive)
     // --------------------
@@ -481,6 +476,9 @@ void Copter::three_hz_loop()
 
     // update ch6 in flight tuning
     tuning();
+
+    // check if avoidance should be enabled based on alt
+    low_alt_avoidance();
 }
 
 // one_hz_loop - runs at 1Hz
@@ -620,17 +618,29 @@ void Copter::update_altitude()
     }
 }
 
-#if OSD_ENABLED == ENABLED
-void Copter::publish_osd_info()
+// vehicle specific waypoint info helpers
+bool Copter::get_wp_distance_m(float &distance) const
 {
-    AP_OSD::NavInfo nav_info;
-    nav_info.wp_distance = flightmode->wp_distance() * 1.0e-2f;
-    nav_info.wp_bearing = flightmode->wp_bearing();
-    nav_info.wp_xtrack_error = flightmode->crosstrack_error() * 1.0e-2f;
-    nav_info.wp_number = mode_auto.mission.get_current_nav_index();
-    osd.set_nav_info(nav_info);
+    // see GCS_MAVLINK_Copter::send_nav_controller_output()
+    distance = flightmode->wp_distance() * 0.01;
+    return true;
 }
-#endif
+
+// vehicle specific waypoint info helpers
+bool Copter::get_wp_bearing_deg(float &bearing) const
+{
+    // see GCS_MAVLINK_Copter::send_nav_controller_output()
+    bearing = flightmode->wp_bearing() * 0.01;
+    return true;
+}
+
+// vehicle specific waypoint info helpers
+bool Copter::get_wp_crosstrack_error_m(float &xtrack_error) const
+{
+    // see GCS_MAVLINK_Copter::send_nav_controller_output()
+    xtrack_error = flightmode->crosstrack_error() * 0.01;
+    return true;
+}
 
 /*
   constructor for main Copter class

@@ -298,7 +298,7 @@ void ModeFlowHold::run()
         FALLTHROUGH;
 
     case AltHold_Landed_Pre_Takeoff:
-        attitude_control->reset_rate_controller_I_terms();
+        attitude_control->reset_rate_controller_I_terms_smoothly();
         pos_control->relax_alt_hold_controllers(0.0f);   // forces throttle output to go to zero
         break;
 
@@ -369,7 +369,8 @@ void ModeFlowHold::update_height_estimate(void)
 
     // get delta velocity in body frame
     Vector3f delta_vel;
-    if (!copter.ins.get_delta_velocity(delta_vel)) {
+    float delta_vel_dt;
+    if (!copter.ins.get_delta_velocity(delta_vel, delta_vel_dt)) {
         return;
     }
 

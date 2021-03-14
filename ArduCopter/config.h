@@ -353,9 +353,6 @@
 // Customed - allow add customed coded and control laws
 #ifndef MODE_CUSTOMED_ENABLED
  #define MODE_CUSTOMED_ENABLED ENABLED
- #ifndef CUSTOMED_VARIABLES
-  #define CUSTOMED_VARIABLES
- #endif
 #endif
 
 //////////////////////////////////////////////////////////////////////////////

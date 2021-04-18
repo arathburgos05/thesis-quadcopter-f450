@@ -15,6 +15,7 @@ void ModeCustomed::run() {
 //    const Vector3f &gyro = ins.get_gyro();
 
     g.a_roll = ahrs.roll;
+//    hal.console->printf("PRUEBA\n ");
 
 //    c_roll = kp._roll*ahrs.roll     + kd._r
 }

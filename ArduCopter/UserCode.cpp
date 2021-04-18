@@ -26,7 +26,18 @@ void Copter::userhook_50Hz()
 void Copter::userhook_MediumLoop()
 {
     // put your 10Hz code here
-    hal.console->printf("Roll: %.2f [deg]  Yaw: %.2f [deg]  Pitch: %.2f [deg]\n", ahrs.roll*180.0/M_PI, ahrs.pitch*180.0/M_PI, ahrs.yaw*180.0/M_PI);
+    // primary input control channels
+//    RC_Channel *channel_roll;
+//    RC_Channel *channel_pitch;
+//    RC_Channel *channel_throttle;
+//    RC_Channel *channel_yaw;
+
+//    hal.console->printf("CH_Roll: %d\n ", channel_roll->get_control_in());
+    hal.console->printf("CH_Pitch: %d\n ", channel_pitch->get_control_in());
+//    hal.console->printf("CH_Throttle: %d\n ", channel_throttle->get_control_in());
+//    hal.console->printf("CH_Yaw: %d\n ", channel_yaw->get_control_in());
+
+//    hal.console->printf("Roll: %.2f [deg]  Yaw: %.2f [deg]  Pitch: %.2f [deg]\n", ahrs.roll*180.0/M_PI, ahrs.pitch*180.0/M_PI, ahrs.yaw*180.0/M_PI);
 }
 #endif
 

@@ -223,7 +223,8 @@ public:
     friend class ModeThrow;
     friend class ModeZigZag;
     friend class ModeAutorotate;
-
+    // [THESIS] Define the new class like friend class in order to access to the attributes and methods.
+    friend class ModeOrientationCtrl;
     Copter(void);
 
 private:
@@ -981,7 +982,10 @@ private:
 #if MODE_AUTOROTATE_ENABLED == ENABLED
     ModeAutorotate mode_autorotate;
 #endif
-
+// [THESIS] Creation of the object for the class created which depends on the macro.
+#if MODE_ORIENTATION_CTRL_ENABLED == ENABLED
+    ModeOrientationCtrl mode_orientation_ctrl;
+#endif
     // mode.cpp
     Mode *mode_from_mode_num(const Mode::Number mode);
     void exit_mode(Mode *&old_flightmode, Mode *&new_flightmode);

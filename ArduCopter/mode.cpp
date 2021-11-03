@@ -37,6 +37,12 @@ Mode *Copter::mode_from_mode_num(const Mode::Number mode)
             break;
 #endif
 
+// [THESIS] Define the case where return the address for the object of the flight mode selected
+#if MODE_ORIENTATION_CTRL_ENABLED == ENABLED
+        case Mode::Number::ORIENT_CTRL:
+            ret = &mode_orientation_ctrl;
+            break;
+#endif
         case Mode::Number::STABILIZE:
             ret = &mode_stabilize;
             break;

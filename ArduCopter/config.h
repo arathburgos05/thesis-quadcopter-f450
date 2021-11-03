@@ -350,6 +350,13 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
+// [THESIS] Orientation control - customed code and control laws implemented by us.
+#ifndef MODE_ORIENTATION_CTRL_ENABLED
+ #define MODE_ORIENTATION_CTRL_ENABLED ENABLED
+ #ifndef ORIENTATION_CTRL_VARIABLES
+  #define ORIENTATION_CTRL_VARIABLES ENABLED
+ #endif
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 // Autorotate - autonomous auto-rotation - helicopters only
@@ -387,23 +394,25 @@
 // FLIGHT_MODE
 //
 
+// [THESIS] Set all flight modes to orientation control mode.
 #ifndef FLIGHT_MODE_1
- # define FLIGHT_MODE_1                  Mode::Number::STABILIZE
+ # define FLIGHT_MODE_1                  Mode::Number::ORIENT_CTRL
 #endif
 #ifndef FLIGHT_MODE_2
- # define FLIGHT_MODE_2                  Mode::Number::STABILIZE
+ # define FLIGHT_MODE_2                  Mode::Number::ORIENT_CTRL
 #endif
 #ifndef FLIGHT_MODE_3
- # define FLIGHT_MODE_3                  Mode::Number::STABILIZE
+ # define FLIGHT_MODE_3                  Mode::Number::ORIENT_CTRL
 #endif
 #ifndef FLIGHT_MODE_4
- # define FLIGHT_MODE_4                  Mode::Number::STABILIZE
+ # define FLIGHT_MODE_4                  Mode::Number::ORIENT_CTRL
 #endif
 #ifndef FLIGHT_MODE_5
- # define FLIGHT_MODE_5                  Mode::Number::STABILIZE
+ # define FLIGHT_MODE_5                  Mode::Number::ORIENT_CTRL
 #endif
+// [THESIS] Set the flight mode 6 to orientation control mode.
 #ifndef FLIGHT_MODE_6
- # define FLIGHT_MODE_6                  Mode::Number::STABILIZE
+ # define FLIGHT_MODE_6                  Mode::Number::ORIENT_CTRL
 #endif
 
 
